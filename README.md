@@ -12,6 +12,13 @@ The goal of this repository is to enable reproducing the measurements in the pap
 ## Installing the requirements
 *This is likely to fail on a windows only machine due to missing openssl/compiler dependencies.*
 
+*For Ubuntu:*
+
+```bash
+sudo apt-get update
+sudo apt-get install build-essential libffi-dev libssl-dev python3-dev
+```
+
 Activate virtual environment and install the dependencies:
 
 ```python
