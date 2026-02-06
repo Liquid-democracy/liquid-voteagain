@@ -59,6 +59,13 @@ def main(args):
         default="0",
     )
     parser_filter.add_argument(
+        "-d",
+        "--vote_delegation_percent",
+        help="Percentage of voters delegating their vote to another voter.",
+        type=str,
+        default="0",
+    )
+    parser_filter.add_argument(
         *common_out_args, default=(base_path / "filter"), **common_out_kwargs
     )
     parser_filter.set_defaults(callback=measure_performances_filter)

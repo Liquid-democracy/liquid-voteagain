@@ -1,5 +1,6 @@
 from petlib.ec import Bn
 import numpy as np
+import random
 
 from voteagain.primitives.ballot_structure import BallotBundle, VoteVector
 
@@ -51,6 +52,21 @@ def generate_shuffled_reencryptions(ctxts, permutation, G, pk, values_vector=Tru
         )
     return randomizers, shuffled_ctxts
 
+# Generates a vote id that is larger than 1, since 0 and 1 are reserved for "against" and "for" votes
+def generate_vid(order):
+    vid = order.random()
+
+    if vid > 1:
+        return vid
+    else:
+        return generate_vid(order)
+
+# Generates the voters vote, which is either a vote delegation or a direct vote
+def make_vote(vote_delegation_percent, pk, vids, G):
+    if random.random() < vote_delegation_percent:
+        return VoteVector([pk.encrypt(random.choice(vids) * G.generator())])
+    else:
+        return VoteVector([pk.encrypt(random.choice([0, 1]) * G.generator())])
 
 def election_setup(group, number_voters, security_param):
     order = group.order()
@@ -58,27 +74,27 @@ def election_setup(group, number_voters, security_param):
     vids = []
     counter = []
     for i in range(number_voters):
-        vids.append(order.random())
+        vids.append(generate_vid(order))
         index = counter_space + counter_space.random()
         counter.append(index)
 
     return vids, counter
 
 
-def generate_ballots(pk, vids, counters, single_vote=True, revotes_fraction=0.0):
+def generate_ballots(pk, vids, counters, single_vote=True, revotes_fraction=0.0, vote_delegation_percent=0.0):
     G = pk.group
     infinity = pk.group.infinite()
 
     lookup_table = {}
     lookup_table[infinity] = 0
 
-    vote = VoteVector([pk.encrypt(1 * G.generator())])
-
     ctxts = []
     nr_revotes = 0
 
     if single_vote:
         for i, vid in enumerate(vids):
+            vote = make_vote(vote_delegation_percent, pk, vids, G)
+
             repr = counters[i] * pk.generator
             lookup_table[repr] = counters[i]
             ctxts.append(
@@ -99,6 +115,8 @@ def generate_ballots(pk, vids, counters, single_vote=True, revotes_fraction=0.0)
 
         for i, vid in enumerate(vids):
             while voter_revoted[i] >= 0:
+                vote = make_vote(vote_delegation_percent, pk, vids, G)
+
                 repr = counters[i] * pk.generator
                 lookup_table[repr] = counters[i]
                 ctxts.append(
