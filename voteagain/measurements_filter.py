@@ -27,6 +27,7 @@ def measure_performances_filter(namespace):
     num_voters_l = parse_arg_list_int(namespace.num_voters)
     revote_percent_l = parse_arg_list_float(namespace.revote_percentage)
     repetitions = namespace.repetitions
+    vote_delegation_percent = float(namespace.vote_delegation_percent)
 
     if len(num_voters_l) != len(revote_percent_l):
         if len(revote_percent_l) == 1:
@@ -50,7 +51,7 @@ def measure_performances_filter(namespace):
             revote_percent,
         )
         gen_times, ver_times = measure_filter_execution_times(
-            revote_percent, num_voters, n_repetitions=repetitions
+            revote_percent, num_voters, n_repetitions=repetitions, n_vote_delegation_percent=vote_delegation_percent
         )
 
         # Data written after each experiment.

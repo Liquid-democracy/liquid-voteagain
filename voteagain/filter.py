@@ -50,6 +50,7 @@ def measure_filter_execution_times(
     curve_nid=415,
     security_param=128,
     n_repetitions=1,
+    n_vote_delegation_percent=0.0,
 ):
     """
     Measure performances of filtering.
@@ -69,7 +70,7 @@ def measure_filter_execution_times(
     ver_times = list()
 
     ctxts, counter_lookup_table, nr_revotes = generate_ballots(
-        pk, vids, counters, single_vote=False, revotes_fraction=revotes_fraction
+        pk, vids, counters, single_vote=False, revotes_fraction=revotes_fraction, vote_delegation_percent=n_vote_delegation_percent
     )
     for rep in range(n_repetitions):
         LOGGER.info("... running repetition %d", rep)
