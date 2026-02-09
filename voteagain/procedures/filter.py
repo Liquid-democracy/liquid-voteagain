@@ -592,6 +592,47 @@ def generate_ballots(
     return ctxts, lookup_table, nr_revotes
 
 
+def _resolve_delegate(start_idx, delegation_map):
+    """Follow delegation chain; return final voter index. Returns None if cycle detected."""
+    seen = set()
+    cur = start_idx
+    while cur in delegation_map and delegation_map[cur] is not None:
+        if cur in seen:
+            # Cycle detected - return None to mark this vote as invalid
+            return None
+        seen.add(cur)
+        cur = delegation_map[cur]
+    return cur
+
+
+def compute_vote_weights(num_voters, delegation_map):
+    """
+    Returns a list of vote weights per voter index.
+    Each voter contributes exactly 1 vote to their final delegate.
+    Voters in delegation cycles get weight 0 (their votes are thrown out).
+
+    Example:
+    >>> compute_vote_weights(2, {0: 1})
+    [0, 2]
+    """
+    if delegation_map is None:
+        return [1] * num_voters
+
+    weights = [0] * num_voters
+    for i in range(num_voters):
+        final_idx = _resolve_delegate(i, delegation_map)
+        
+        # Skip if cycle detected (final_idx is None)
+        if final_idx is None:
+            continue
+            
+        if final_idx < 0 or final_idx >= num_voters:
+            raise ValueError("Delegation map contains invalid voter index.")
+        weights[final_idx] += 1
+    return weights
+
+
+
 if __name__ == "__main__":
     import doctest
 
