@@ -16,7 +16,7 @@ The goal of this repository is to enable reproducing the measurements in the pap
 
 ```bash
 sudo apt-get update
-sudo apt-get install build-essential libffi-dev libssl-dev python3-dev
+sudo apt-get install build-essential libffi-dev libssl-dev python3-dev texlive-latex-extra texlive-fonts-recommended dvipng cm-super
 ```
 
 Activate virtual environment and install the dependencies:
