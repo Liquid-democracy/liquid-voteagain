@@ -61,12 +61,27 @@ def generate_vid(order):
     else:
         return generate_vid(order)
 
-# Generates the voters vote, which is either a vote delegation or a direct vote
+# Generates the voters vote as a one-hot encrypted vector over candidates [0, 1] + vids
 def make_vote(vote_delegation_percent, pk, vids, G):
+    candidates = [0, 1] + vids
+    
     if random.random() < vote_delegation_percent:
-        return VoteVector([pk.encrypt(random.choice(vids) * G.generator())])
+        chosen_candidate = random.choice(vids)
     else:
-        return VoteVector([pk.encrypt(random.choice([0, 1]) * G.generator())])
+        chosen_candidate = random.choice([0, 1])
+    
+    # Find index of chosen option in candidate space
+    chosen_idx = candidates.index(chosen_candidate)
+    
+    # Create one-hot encrypted vector
+    vote_entries = []
+    for i in range(len(candidates)):
+        if i == chosen_idx:
+            vote_entries.append(pk.encrypt(1 * G.generator()))
+        else:
+            vote_entries.append(pk.encrypt(G.infinite()))
+    
+    return VoteVector(vote_entries)
 
 def election_setup(group, number_voters, security_param):
     order = group.order()
