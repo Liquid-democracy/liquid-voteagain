@@ -17,6 +17,7 @@ from .measurements_padding_overhead import (
     measure_padding_max_votes_voters_limit,
 )
 from .measurements_minimal_shuffle import measure_performances_minimal_shuffle
+from .measurements_tally import measure_performances_tally
 
 
 def main(args):
@@ -224,6 +225,21 @@ def main(args):
         *common_out_args, default=(base_path / "shuffle"), **common_out_kwargs
     )
     parser_shuffle.set_defaults(callback=measure_performances_minimal_shuffle)
+
+    # Parse arguments for the tally experiment
+    parser_tally = subparsers.add_parser(
+        "tally",
+        help="Measure performance of tallying votes.",
+        parents=[common],
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser_tally.add_argument(
+        "-n", "--num-voters", help="Number of voters.", type=str, default="100"
+    )
+    parser_tally.add_argument(
+        *common_out_args, default=(base_path / "tally"), **common_out_kwargs
+    )
+    parser_tally.set_defaults(callback=measure_performances_tally)
 
     namespace = parser.parse_args(args)
 
