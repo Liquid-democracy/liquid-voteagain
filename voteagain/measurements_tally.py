@@ -25,9 +25,10 @@ MEASURE_PERFORMANCES_TALLY_TITLES = (
 MEASURE_PERFORMANCES_TALLY_DELEGATION_TITLES = (
     "NumberVoters",
     "VoteDelegationPercent",
-    "NumberVotesCreated",
-    "VoteVectorLength",
-    "SetupTime",
+    "TallyTime",
+    "VotesAgainst",
+    "VotesFor",
+    "Winner",
 )
 
 
@@ -88,19 +89,6 @@ def measure_performances_tally_delegation(namespace):
 
         tally_fd.flush()
 
-
-def build_delegated_votes_setup(pk, vids, group, vote_delegation_percent):
-    """Build one vote per voter using delegation-aware vote creation."""
-
-    return [make_vote(vote_delegation_percent, pk, vids, group) for _ in vids]
-
-
-def tally_delegation_times():
-    measurements = list()
-
-    return measurements
-
-
 def tally_execution_times(num_voters_l, curve_nid=415, n_repetitions=1):
     """Measure the execution time for tally operations."""
 
@@ -150,3 +138,169 @@ def _tally_votes(decrypted_votes, group):
             raise ValueError("Unexpected vote encoding in tally input.")
 
     return tally
+
+def tally_delegation_times(
+    num_voters_l,
+    vote_delegation_percent,
+    curve_nid=415,
+    security_param=128,
+    n_repetitions=1,
+):
+    """Measure tally with delegation DAG, cycle removal, and election outcome."""
+
+    group = EcGroup(curve_nid)
+    key_pair = elgamal.KeyPair(group)
+    sk = key_pair.sk
+
+    measurements = list()
+
+    for num_voters in num_voters_l:
+        LOGGER.info(
+            "Running delegation tally with %d voters and delegation percent %.2f.",
+            num_voters,
+            vote_delegation_percent,
+        )
+
+        vids, _ = election_setup(group, num_voters, security_param)
+
+        votes = [make_vote(vote_delegation_percent, key_pair.pk, vids, group) for _ in vids]
+
+        for _ in range(n_repetitions):
+            tally_start = time.process_time()
+
+            voter_choices = {}
+            for voter_vid, vote_vector in zip(vids, votes):
+                voter_choices[voter_vid] = _decode_choice_from_vote_vector(
+                    vote_vector, sk, group, vids
+                )
+
+            direct_votes, delegation_edges = _build_delegation_structures(voter_choices, vids)
+            cycle_nodes = _find_cycle_nodes(delegation_edges)
+
+            votes_against = 0
+            votes_for = 0
+
+            memo = {}
+            for voter_vid in vids:
+                resolved = _resolve_tallied_vote(
+                    voter_vid,
+                    direct_votes,
+                    delegation_edges,
+                    cycle_nodes,
+                    memo,
+                )
+
+                if resolved == 0:
+                    votes_against += 1
+                elif resolved == 1:
+                    votes_for += 1
+
+            winner = _determine_winner(votes_against, votes_for)
+            tally_time = time.process_time() - tally_start
+
+            measurements.append(
+                [
+                    num_voters,
+                    vote_delegation_percent,
+                    tally_time,
+                    votes_against,
+                    votes_for,
+                    winner,
+                ]
+            )
+
+    return measurements
+
+def _decode_choice_from_vote_vector(vote_vector, sk, group, vids):
+    """Decode the single selected entry from candidates [0, 1] + vids."""
+
+    candidates = [0, 1] + vids
+    one_vote = group.generator()
+
+    for idx, ctxt in enumerate(vote_vector.ballot):
+        if ctxt.decrypt(sk) == one_vote:
+            return candidates[idx]
+
+def _build_delegation_structures(voter_choices, vids):
+    """Split choices into direct votes and delegation edges."""
+
+    direct_votes = {}
+    delegation_edges = {}
+    vid_set = set(vids)
+
+    for voter_vid, choice in voter_choices.items():
+        if choice in (0, 1):
+            direct_votes[voter_vid] = choice
+        else:
+            delegation_edges[voter_vid] = choice
+
+    return direct_votes, delegation_edges
+
+def _find_cycle_nodes(delegation_edges):
+    """Return all voter vids that belong to a directed cycle."""
+
+    cycle_nodes = set()
+    state = {}  # 0=unvisited, 1=visiting, 2=done
+    stack = []
+    stack_pos = {}
+
+    def depth_first_search(node):
+        state[node] = 1
+        stack_pos[node] = len(stack)
+        stack.append(node)
+
+        nxt = delegation_edges.get(node)
+        if nxt is not None:
+            nxt_state = state.get(nxt, 0)
+            if nxt_state == 0:
+                depth_first_search(nxt)
+            elif nxt_state == 1:
+                cycle_start = stack_pos[nxt]
+                cycle_nodes.update(stack[cycle_start:])
+
+        stack.pop()
+        stack_pos.pop(node, None)
+        state[node] = 2
+
+    for node in delegation_edges:
+        if state.get(node, 0) == 0:
+            depth_first_search(node)
+
+    return cycle_nodes
+
+def _resolve_tallied_vote(voter_vid, direct_votes, delegation_edges, cycle_nodes, memo):
+    """Resolve a voter's final direct vote (0/1), or None if dropped/unresolved."""
+
+    if voter_vid in memo:
+        return memo[voter_vid]
+
+    if voter_vid in cycle_nodes:
+        memo[voter_vid] = None
+        return None
+
+    if voter_vid in direct_votes:
+        memo[voter_vid] = direct_votes[voter_vid]
+        return memo[voter_vid]
+
+    delegate_vid = delegation_edges.get(voter_vid)
+    if delegate_vid is None:
+        memo[voter_vid] = None
+        return None
+
+    if delegate_vid in cycle_nodes:
+        memo[voter_vid] = None
+        return None
+
+    memo[voter_vid] = _resolve_tallied_vote(
+        delegate_vid, direct_votes, delegation_edges, cycle_nodes, memo
+    )
+    return memo[voter_vid]
+
+
+def _determine_winner(votes_against, votes_for):
+    """Determine winner: 'for' wins ties."""
+    if votes_for > votes_against:
+        return "for"
+    if votes_against > votes_for:
+        return "against"
+    return "tie"
