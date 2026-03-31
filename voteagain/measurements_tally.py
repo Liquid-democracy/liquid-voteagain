@@ -20,6 +20,9 @@ from .procedures.election_data import election_setup, make_vote
 MEASURE_PERFORMANCES_TALLY_TITLES = (
     "NumberVoters",
     "TallyTime",
+    "VotesAgainst",
+    "VotesFor",
+    "Winner",
 )
 
 MEASURE_PERFORMANCES_TALLY_DELEGATION_TITLES = (
@@ -111,8 +114,18 @@ def tally_execution_times(num_voters_l, curve_nid=415, n_repetitions=1):
             tally_result = _tally_votes(decrypted_votes, group)
             
             tally_time = time.process_time() - tally_start
+
+            winner = _determine_winner(tally_result[0], tally_result[1])
             
-            measurements.append([num_voters, tally_time])
+            measurements.append(
+                [
+                    num_voters,
+                    tally_time,
+                    tally_result[0],
+                    tally_result[1],
+                    winner,
+                ]
+            )
 
     return measurements
 
