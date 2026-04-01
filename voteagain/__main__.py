@@ -17,7 +17,10 @@ from .measurements_padding_overhead import (
     measure_padding_max_votes_voters_limit,
 )
 from .measurements_minimal_shuffle import measure_performances_minimal_shuffle
-from .measurements_tally import measure_performances_tally
+from .measurements_tally import (
+    measure_performances_tally,
+    measure_performances_tally_delegation,
+)
 
 
 def main(args):
@@ -240,6 +243,30 @@ def main(args):
         *common_out_args, default=(base_path / "tally"), **common_out_kwargs
     )
     parser_tally.set_defaults(callback=measure_performances_tally)
+
+    # Parse arguments for delegation tally experiment
+    parser_tally_delegation = subparsers.add_parser(
+        "tally-delegation",
+        help="Measure performance of tallying votes with delegation.",
+        parents=[common],
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser_tally_delegation.add_argument(
+        "-n", "--num-voters", help="Number of voters.", type=str, default="100"
+    )
+    parser_tally_delegation.add_argument(
+        "-d",
+        "--vote-delegation-percent",
+        help="Fraction of voters delegating their vote.",
+        type=float,
+        default=0.3,
+    )
+    parser_tally_delegation.add_argument(
+        *common_out_args, default=(base_path / "tally"), **common_out_kwargs
+    )
+    parser_tally_delegation.set_defaults(
+        callback=measure_performances_tally_delegation
+    )
 
     namespace = parser.parse_args(args)
 
