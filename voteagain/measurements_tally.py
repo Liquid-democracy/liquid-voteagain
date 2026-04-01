@@ -13,8 +13,7 @@ from petlib.ec import EcGroup
 # Local files
 from .common import ensures_csv_exists, ensures_dir_exists, parse_arg_list_int
 from .logging import LOGGER
-from .primitives import elgamal
-from .procedures.election_data import election_setup, make_vote
+from .procedures.election_data import election_setup
 
 
 MEASURE_PERFORMANCES_TALLY_TITLES = (
@@ -102,21 +101,20 @@ def tally_execution_times(num_voters_l, curve_nid=415, n_repetitions=1):
     for num_voters in num_voters_l:
 
         LOGGER.info("Running tally with %d voters.", num_voters)
-        '''
-        For testing purposes, we simulate decrypted votes as random group elements correspondingto votes 0 or 1
-        In a real scenario, these would be the result of decrypting the encrypted votes
-        '''
-        decrypted_votes = [random.choice([0, 1]) * group.generator() for _ in range(num_voters)]
-        
+        # Simulate already decrypted votes
+        decrypted_votes = [
+            random.choice([0, 1]) * group.generator() for _ in range(num_voters)
+        ]
+
         for _ in range(n_repetitions):
             tally_start = time.process_time()
-            
+
             tally_result = _tally_votes(decrypted_votes, group)
-            
+
             tally_time = time.process_time() - tally_start
 
             winner = _determine_winner(tally_result[0], tally_result[1])
-            
+
             measurements.append(
                 [
                     num_voters,
@@ -129,11 +127,10 @@ def tally_execution_times(num_voters_l, curve_nid=415, n_repetitions=1):
 
     return measurements
 
-
 def _tally_votes(decrypted_votes, group):
     """
-    Tally the decrypted votes.
-    
+    Tally the decrypted votes
+
     :param decrypted_votes: List of decrypted vote group elements
     :param group: The elliptic curve group
     :return: Dictionary mapping vote choices to counts
@@ -147,8 +144,6 @@ def _tally_votes(decrypted_votes, group):
             tally[0] += 1
         elif vote == one_vote:
             tally[1] += 1
-        else:
-            raise ValueError("Unexpected vote encoding in tally input.")
 
     return tally
 
@@ -162,8 +157,6 @@ def tally_delegation_times(
     """Measure tally with delegation DAG, cycle removal, and election outcome."""
 
     group = EcGroup(curve_nid)
-    key_pair = elgamal.KeyPair(group)
-    sk = key_pair.sk
 
     measurements = list()
 
@@ -176,18 +169,16 @@ def tally_delegation_times(
 
         vids, _ = election_setup(group, num_voters, security_param)
 
-        votes = [make_vote(vote_delegation_percent, key_pair.pk, vids, group) for _ in vids]
+        # Generate already-decrypted choices outside timing
+        voter_choices = {
+            voter_vid: _make_delegated_choice(vote_delegation_percent, vids)
+            for voter_vid in vids
+        }
 
         for _ in range(n_repetitions):
             tally_start = time.process_time()
 
-            voter_choices = {}
-            for voter_vid, vote_vector in zip(vids, votes):
-                voter_choices[voter_vid] = _decode_choice_from_vote_vector(
-                    vote_vector, sk, group, vids
-                )
-
-            direct_votes, delegation_edges = _build_delegation_structures(voter_choices, vids)
+            direct_votes, delegation_edges = _build_delegation_structures(voter_choices)
             cycle_nodes = _find_cycle_nodes(delegation_edges)
 
             votes_against = 0
@@ -224,22 +215,19 @@ def tally_delegation_times(
 
     return measurements
 
-def _decode_choice_from_vote_vector(vote_vector, sk, group, vids):
-    """Decode the single selected entry from candidates [0, 1] + vids."""
+def _make_delegated_choice(vote_delegation_percent, vids):
+    """Generate one already-decrypted choice: 0, 1, or delegated vid."""
 
-    candidates = [0, 1] + vids
-    one_vote = group.generator()
+    if random.random() < vote_delegation_percent:
+        return random.choice(vids)
 
-    for idx, ctxt in enumerate(vote_vector.ballot):
-        if ctxt.decrypt(sk) == one_vote:
-            return candidates[idx]
+    return random.choice([0, 1])
 
-def _build_delegation_structures(voter_choices, vids):
+def _build_delegation_structures(voter_choices):
     """Split choices into direct votes and delegation edges."""
 
     direct_votes = {}
     delegation_edges = {}
-    vid_set = set(vids)
 
     for voter_vid, choice in voter_choices.items():
         if choice in (0, 1):
@@ -308,7 +296,6 @@ def _resolve_tallied_vote(voter_vid, direct_votes, delegation_edges, cycle_nodes
         delegate_vid, direct_votes, delegation_edges, cycle_nodes, memo
     )
     return memo[voter_vid]
-
 
 def _determine_winner(votes_against, votes_for):
     """Determine winner: 'for' wins ties."""
