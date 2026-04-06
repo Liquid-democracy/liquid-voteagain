@@ -11,7 +11,12 @@ import time
 from petlib.ec import EcGroup
 
 # Local files
-from .common import ensures_csv_exists, ensures_dir_exists, parse_arg_list_int
+from .common import (
+    ensures_csv_exists,
+    ensures_dir_exists,
+    parse_arg_list_float,
+    parse_arg_list_int,
+)
 from .logging import LOGGER
 from .procedures.election_data import election_setup
 
@@ -65,18 +70,19 @@ def measure_performances_tally_delegation(namespace):
     output_dir = namespace.out
     num_voters = parse_arg_list_int(namespace.num_voters)
     repetitions = namespace.repetitions
-    vote_delegation_percent = float(namespace.vote_delegation_percent)
-
-    if vote_delegation_percent <= 0.0 or vote_delegation_percent > 1.0:
-        raise ValueError("vote_delegation_percent must be in (0.0, 1.0].")
+    vote_delegation_percents = parse_arg_list_float(namespace.vote_delegation_percent)
 
     ensures_dir_exists(output_dir)
 
-    measurements = tally_delegation_times(
-        num_voters,
-        vote_delegation_percent,
-        n_repetitions=repetitions,
-    )
+    measurements = []
+    for vote_delegation_percent in vote_delegation_percents:
+        measurements.extend(
+            tally_delegation_times(
+                num_voters,
+                vote_delegation_percent,
+                n_repetitions=repetitions,
+            )
+        )
 
     filepath = output_dir / "tally_delegation.csv"
 

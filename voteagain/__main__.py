@@ -258,8 +258,8 @@ def main(args):
         "-d",
         "--vote-delegation-percent",
         help="Fraction of voters delegating their vote.",
-        type=float,
-        default=0.3,
+        type=str,
+        default="0.3",
     )
     parser_tally_delegation.add_argument(
         *common_out_args, default=(base_path / "tally"), **common_out_kwargs
