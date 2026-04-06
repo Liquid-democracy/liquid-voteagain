@@ -64,8 +64,8 @@ def main(args):
     )
     parser_filter.add_argument(
         "-d",
-        "--vote_delegation_percent",
-        help="Percentage of voters delegating their vote to another voter.",
+        "--vote-delegation-percent",
+        help="Fraction of voters delegating their vote.",
         type=str,
         default="0",
     )
