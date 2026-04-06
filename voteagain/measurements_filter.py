@@ -26,8 +26,8 @@ def measure_performances_filter(namespace):
     output_dir = namespace.out
     num_voters_l = parse_arg_list_int(namespace.num_voters)
     revote_percent_l = parse_arg_list_float(namespace.revote_percentage)
+    vote_delegation_percent_l = parse_arg_list_float(namespace.vote_delegation_percent)
     repetitions = namespace.repetitions
-    vote_delegation_percent = float(namespace.vote_delegation_percent)
 
     if len(num_voters_l) != len(revote_percent_l):
         if len(revote_percent_l) == 1:
@@ -44,14 +44,22 @@ def measure_performances_filter(namespace):
     ensures_csv_exists(gen_filename, MEASURE_FILTER_EXECUTION_GEN_KEYS)
     ensures_csv_exists(ver_filename, MEASURE_FILTER_EXECUTION_VER_KEYS)
 
-    for num_voters, revote_percent in zip(num_voters_l, revote_percent_l):
+    for num_voters, revote_percent, vote_delegation_percent in zip(
+        num_voters_l,
+        revote_percent_l,
+        vote_delegation_percent_l,
+    ):
         LOGGER.info(
-            "Run filter experiment with %d voters and %d percent revoting.",
+            "Run filter experiment with %d voters, %.2f percent revoting, and %.2f delegation percent.",
             num_voters,
             revote_percent,
+            vote_delegation_percent,
         )
         gen_times, ver_times = measure_filter_execution_times(
-            revote_percent, num_voters, n_repetitions=repetitions, n_vote_delegation_percent=vote_delegation_percent
+            revote_percent,
+            num_voters,
+            n_repetitions=repetitions,
+            n_vote_delegation_percent=vote_delegation_percent,
         )
 
         # Data written after each experiment.
