@@ -112,7 +112,7 @@ class Filter:
         reencrypt_time = time.process_time()
 
         ### Step 6: randomize and shuffle selected votes
-        self.selected_votes = self.reencrypted_votes
+        self.selected_votes = [v.ballot[0] for v in self.reencrypted_votes]
 
         # We shuffle the reencrypted_votes ones more so we can drop the ones corresponding to dummy ballots
         (
