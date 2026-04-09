@@ -19,6 +19,7 @@ from .logging import LOGGER
 
 MEASURE_FILTER_EXECUTION_GEN_KEYS = (
     "Nr_Voters",
+    "VoteDelegationPercent",
     "Total_Revotes",
     "Extra_Padding",
     "Dummies",
@@ -32,6 +33,7 @@ MEASURE_FILTER_EXECUTION_GEN_KEYS = (
 
 MEASURE_FILTER_EXECUTION_VER_KEYS = (
     "Nr_Voters",
+    "VoteDelegationPercent",
     "Total_Revotes",
     "Extra_Padding",
     "Shuffle",
@@ -93,6 +95,7 @@ def measure_filter_execution_times(
 
         gen_times_entry = (
             number_voters,
+            n_vote_delegation_percent,
             nr_revotes,
             filter_proof.overhead,
             round(filter_proof.time_dummy_gen, 5),
@@ -107,6 +110,7 @@ def measure_filter_execution_times(
 
         ver_times_entry = (
             number_voters,
+            n_vote_delegation_percent,
             nr_revotes,
             filter_proof.overhead,
             round(filter_proof.shufle_time_ver, 5),
