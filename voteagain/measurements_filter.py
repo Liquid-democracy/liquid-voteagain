@@ -36,6 +36,13 @@ def measure_performances_filter(namespace):
             # In this case, there is likely an error in the arguments passed to the program.
             raise AttributeError()
 
+    if len(num_voters_l) != len(vote_delegation_percent_l):
+        if len(vote_delegation_percent_l) == 1:
+            vote_delegation_percent_l = vote_delegation_percent_l * len(num_voters_l)
+        else:
+            # In this case, there is likely an error in the arguments passed to the program.
+            raise AttributeError()
+
     ensures_dir_exists(output_dir)
 
     gen_filename = output_dir / "full_filter.csv"
